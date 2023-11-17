@@ -4,7 +4,7 @@
 
 An opinionated CLI tool to create branch for your in-progress JIRA ticket, without leaving your terminal.
 
-[![asciicast](https://asciinema.org/a/ne8etrh1CvfdyinbDIn7HEtK1.svg)](https://asciinema.org/a/ne8etrh1CvfdyinbDIn7HEtK1)
+[![asciicast](https://asciinema.org/a/621686.svg)](https://asciinema.org/a/621686)
 
 ## Key Things to Be Aware Of
 1. The branches are always based out of the latest commit on the primary branch.
