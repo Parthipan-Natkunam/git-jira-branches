@@ -2,7 +2,12 @@
     <img src="doc/asciiart.png" alt="ascii art"/>
 </p>
 
-A CLI tool to create branch for your in-progress JIRA ticket, without leaving your terminal.
+An opinionated CLI tool to create branch for your in-progress JIRA ticket, without leaving your terminal.
+
+## Key Things to Be Aware Of
+1. The branches are always based out of the latest commit on the primary branch.
+2. Forces developer to have only one ticket in "in progress" state at any given time.
+3. branch naming convention `<ticketId>/<ticketSummary>`, where `<ticketId>` is the JIRA ticket id and `<ticketSummary>` is kebabcased version of the summary of the ticket (JIRA title).
 
 ## Installation
 1. ```touch gjb-config.json```
