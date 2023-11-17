@@ -8,6 +8,7 @@
   "dependencies": {
     "commander": "^11.1.0",
     "figlet": "^1.7.0",
+    "just-kebab-case": "^4.2.0",
     "ora": "^7.0.1"
   },
   "devDependencies": {
