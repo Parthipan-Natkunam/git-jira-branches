@@ -19,13 +19,11 @@ program
     "Create Git branches named from your current in-progress Jira issues directly from the terminal."
   )
   .option("-i, --init", "initialize branching workflow")
-  .option("-l, --list", "list branches")
+  // .option("-l, --list", "list branches")
   .parse(process.argv);
 
-const { init, list } = program.opts();
+const { init } = program.opts();
 
 if (init) {
-    console.log("Initializing...");
-} else if (list) {
-    console.log("Listing...");
+  console.log("Initializing...");
 }
