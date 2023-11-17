@@ -1,6 +1,6 @@
 import { Command } from "commander";
 import figlet from "figlet";
-import ora from "ora";
+import ora, { Ora } from "ora";
 
 import pjson from "./package.json" assert { type: "json" };
 import scriptConfig from "./config.json" assert { type: "json" };
@@ -17,12 +17,6 @@ const { version, author, license } = pjson;
 const { baseUrl, mail, token } = scriptConfig;
 
 const program = new Command();
-
-const decoratedFiglet = figlet.textSync("Git Jira Branches");
-
-console.log(decoratedFiglet);
-console.log(`${"-".repeat(decoratedFiglet.length / 5)}\n`);
-
 program
   .version(version)
   .name("gjb")
@@ -33,15 +27,22 @@ program
   // .option("-l, --list", "list branches")
   .parse(process.argv);
 
+const decoratedFiglet = figlet.textSync("Git Jira Branches");
+
+const printPreamble = () => {
+  console.log(decoratedFiglet);
+  const underlineLength = decoratedFiglet.length / 5;
+  console.log(`${"-".repeat(underlineLength)}\n`);
+  console.log(
+    `Version: ${version}\t Author: ${author}\t License: ${license}\n`
+  );
+  console.log(`Description:\n ${program.description()}\n`);
+  console.log(`${"-".repeat(underlineLength)}\n`);
+};
+
 const { init } = program.opts();
 
-console.log(`Version: ${version}\t Author: ${author}\t License: ${license}\n`);
-console.log(`Description:\n ${program.description()}\n`);
-console.log(`${"-".repeat(decoratedFiglet.length / 5)}\n`);
-
-const spinner = ora("Initializing...\n").start();
-
-const fetchTickets = (): Promise<{ issues: Ticket[] }> => {
+const fetchTickets = (spinner: Ora): Promise<{ issues: Ticket[] }> => {
   spinner.text = "Fetching your in-progress tickets...\n";
   spinner.color = "yellow";
   return fetch(
@@ -68,8 +69,8 @@ const fetchTickets = (): Promise<{ issues: Ticket[] }> => {
     });
 };
 
-const initialize = async () => {
-  const data = await fetchTickets();
+const initialize = async (spinner: Ora) => {
+  const data = await fetchTickets(spinner);
   if (data) {
     const issues = data.issues ?? [];
     spinner.text = `Found ${issues.length} in-progress ${
@@ -89,6 +90,8 @@ const initialize = async () => {
   }
 };
 
+printPreamble();
 if (init) {
-  initialize();
+  const spinner = ora("Initializing...\n").start();
+  initialize(spinner);
 }
