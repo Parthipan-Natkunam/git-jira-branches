@@ -5,7 +5,7 @@ import ora, { Ora } from "ora";
 import kebabCase from "just-kebab-case";
 
 import pjson from "./package.json" assert { type: "json" };
-import scriptConfig from "./config.json" assert { type: "json" };
+import scriptConfig from "./gjb-config.json" assert { type: "json" };
 
 type Ticket = {
   key: string;
