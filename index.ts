@@ -133,6 +133,7 @@ const createBranch = (issue: FormattedTicket, spinner: Ora) => {
     execSync(`git checkout -b ${branchName}`);
     spinner.text = `Successfully created branch ${branchName} \n`;
     spinner.succeed();
+    console.log(`Press Ctrl+C to exit`);
   } catch (e) {
     spinner.text = "Failed to create branch!\n";
     spinner.fail();
