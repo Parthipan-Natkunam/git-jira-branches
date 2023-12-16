@@ -112,8 +112,8 @@ const initialize = async () => {
 
 const pullPrimaryBranch = () => {
   try {
-    console.log(`Your primary branch is ${primaryBranch}`);
     execSync(`git checkout ${primaryBranch} && git pull`);
+    return primaryBranch as string;
   } catch (error) {
     let errorToThrow = error instanceof Error ? error : null;
     throw new ApllicationError(errorToThrow, "Failed to checkout to primary branch!");
@@ -131,41 +131,37 @@ const createBranch = (issue: FormattedTicket) => {
   }
 };
 
+const executeInitFlowWithSpinnerDisplays = async() => {
+  const spinner = ora("Initializing...\n").start();
+  try{
+    spinner.text = "Fetching your in-progress tickets...\n";
+    spinner.color = "yellow";
+    const issuesList = await initialize();
+    spinner.text = "Successfully fetched your in-progress tickets!\n";
+    spinner.succeed();
+    if (issuesList) {
+      issuesList.forEach((issue) => {
+        spinner.text = "Checking out and pulling primary branch...\n";
+        spinner.color = "yellow";
+        const primaryBranch = pullPrimaryBranch();
+        spinner.text = `Successfully checked out to and pulled latest from ${primaryBranch} \n`;
+        spinner.succeed();
+        spinner.text = `Creating branch for ticket ${issue.id}...\n`;
+        spinner.color = "yellow";
+        const branchName = createBranch(issue);
+        spinner.text = `Successfully created branch ${branchName} \n`;
+        spinner.succeed();
+        console.log(`Press Ctrl+C to exit`);
+      });
+    }
+  } catch (error) {
+    let thrownError = error as ApllicationError;
+    spinner.text = `${thrownError?.displayMessage || thrownError?.message || "Something went wrong."}\n`;
+    spinner.fail();
+  }
+}
+
 printPreamble();
 if (init) {
-  const spinner = ora("Initializing...\n").start();
-  spinner.text = "Fetching your in-progress tickets...\n";
-  spinner.color = "yellow";
-
-  initialize()
-    .then((issuesList) => {
-      spinner.text = "Successfully fetched your in-progress tickets!\n";
-      spinner.succeed();
-      if (issuesList) {
-        issuesList.forEach((issue) => {
-          try{
-            spinner.text = "Checking out and pulling primary branch...\n";
-            spinner.color = "yellow";
-            pullPrimaryBranch();
-            spinner.text = `Successfully checked out to and pulled latest from ${primaryBranch} \n`;
-            spinner.succeed();
-            spinner.text = `Creating branch for ticket ${issue.id}...\n`;
-            spinner.color = "yellow";
-            const branchName = createBranch(issue);
-            spinner.text = `Successfully created branch ${branchName} \n`;
-            spinner.succeed();
-            console.log(`Press Ctrl+C to exit`);
-          } catch (error) {
-            let thrownError = error as ApllicationError;
-            spinner.text = `${thrownError?.displayMessage || thrownError?.message || "Something went wrong."}\n`;
-            spinner.fail();
-          }
-        });
-      }
-    })
-    .catch((error:unknown) => {
-      let thrownError = error as ApllicationError;
-      spinner.text = `${thrownError?.displayMessage || thrownError?.message || "Something went wrong."}\n`;
-      spinner.fail();
-    });
+  executeInitFlowWithSpinnerDisplays();  
 }
