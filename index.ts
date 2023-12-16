@@ -22,6 +22,16 @@ type FormattedTicket = {
   description: string;
 };
 
+class ApllicationError extends Error {
+  displayMessage: string;
+  constructor(thrownError: Error | null, displayMessage: string) {
+    super(thrownError?.message || "An error occurred");
+    this.name = "ApplicationError";
+    this.stack = thrownError?.stack;
+    this.displayMessage = displayMessage;
+  }
+}
+
 const { version, author, license } = pjson;
 const { baseUrl, mail, token, primaryBranch } = scriptConfig;
 
@@ -51,9 +61,7 @@ const printPreamble = () => {
 
 const { init } = program.opts();
 
-const fetchTickets = (spinner: Ora): Promise<{ issues: Ticket[] }> => {
-  spinner.text = "Fetching your in-progress tickets...\n";
-  spinner.color = "yellow";
+const fetchTickets = (): Promise<{ issues: Ticket[] }> => {
   return fetch(
     `${baseUrl}/rest/api/2/search?jql=assignee=currentuser()+AND+status='In+Progress'`,
     {
@@ -71,31 +79,22 @@ const fetchTickets = (spinner: Ora): Promise<{ issues: Ticket[] }> => {
         return response.json();
       }
     })
-    .catch((error) => {
-      console.log(error);
-      spinner.text = "Failed to fetch your in-progress tickets!\n";
-      spinner.fail();
+    .catch((error:unknown) => {
+      const errorToThrow = error instanceof Error ? error : null;
+      throw new ApllicationError(errorToThrow, "Failed to fetch tickets");
     });
 };
 
-const initialize = async (spinner: Ora) => {
-  const data = await fetchTickets(spinner);
+const initialize = async () => {
+  const data = await fetchTickets();
   if (data) {
     const issues = data.issues ?? [];
     if (issues.length > 1) {
-      throw new Error(
-        "You have more than one in-progress ticket. Please only work on one ticket at a time"
-      );
+      throw new ApllicationError(null, "Multiple in-progress tickets found!");
     }
     if (issues.length === 0) {
-      spinner.text = "No in-progress tickets found!\n";
-      spinner.fail();
-      return null;
+      throw new ApllicationError(null, "No in-progress tickets found!");
     }
-    spinner.text = `Found ${issues.length} in-progress ${
-      issues.length > 1 ? "tickets" : "ticket"
-    }\n`;
-    spinner.succeed();
     const issuesList: FormattedTicket[] = issues.map((issue) => {
       return {
         id: issue.key,
@@ -111,49 +110,58 @@ const initialize = async (spinner: Ora) => {
   }
 };
 
-const pullPrimaryBranch = (spinner: Ora) => {
-  spinner.text = "Checking out and pulling primary branch...\n";
-  spinner.color = "yellow";
+const pullPrimaryBranch = () => {
   try {
-    console.log(`Your primary branch is ${primaryBranch}`);
     execSync(`git checkout ${primaryBranch} && git pull`);
-    spinner.text = `Successfully checked out to and pulled latest from ${primaryBranch} \n`;
-    spinner.succeed();
-  } catch (e) {
-    spinner.text = "Failed to checkout to primary branch!\n";
-    spinner.fail();
+    return primaryBranch as string;
+  } catch (error) {
+    let errorToThrow = error instanceof Error ? error : null;
+    throw new ApllicationError(errorToThrow, "Failed to checkout to primary branch!");
   }
 };
 
-const createBranch = (issue: FormattedTicket, spinner: Ora) => {
-  spinner.text = `Creating branch for ticket ${issue.id}...\n`;
-  spinner.color = "yellow";
+const createBranch = (issue: FormattedTicket) => {
   try {
     const branchName = `${issue.id}/${issue.branchDescription}`;
     execSync(`git checkout -b ${branchName}`);
-    spinner.text = `Successfully created branch ${branchName} \n`;
-    spinner.succeed();
-    console.log(`Press Ctrl+C to exit`);
-  } catch (e) {
-    spinner.text = "Failed to create branch!\n";
-    spinner.fail();
+    return branchName;
+  } catch (error) {
+    let errorToThrow = error instanceof Error ? error : null;
+    throw new ApllicationError(errorToThrow, "Failed to create branch!");
   }
 };
 
+const executeInitFlowWithSpinnerDisplays = async() => {
+  const spinner = ora("Initializing...\n").start();
+  try{
+    spinner.text = "Fetching your in-progress tickets...\n";
+    spinner.color = "yellow";
+    const issuesList = await initialize();
+    spinner.text = "Successfully fetched your in-progress tickets!\n";
+    spinner.succeed();
+    if (issuesList) {
+      issuesList.forEach((issue) => {
+        spinner.text = "Checking out and pulling primary branch...\n";
+        spinner.color = "yellow";
+        const primaryBranch = pullPrimaryBranch();
+        spinner.text = `Successfully checked out to and pulled latest from ${primaryBranch} \n`;
+        spinner.succeed();
+        spinner.text = `Creating branch for ticket ${issue.id}...\n`;
+        spinner.color = "yellow";
+        const branchName = createBranch(issue);
+        spinner.text = `Successfully created branch ${branchName} \n`;
+        spinner.succeed();
+        console.log(`Press Ctrl+C to exit`);
+      });
+    }
+  } catch (error) {
+    let thrownError = error as ApllicationError;
+    spinner.text = `${thrownError?.displayMessage || thrownError?.message || "Something went wrong."}\n`;
+    spinner.fail();
+  }
+}
+
 printPreamble();
 if (init) {
-  const spinner = ora("Initializing...\n").start();
-  initialize(spinner)
-    .then((issuesList) => {
-      if (issuesList) {
-        issuesList.forEach((issue) => {
-          pullPrimaryBranch(spinner);
-          createBranch(issue, spinner);
-        });
-      }
-    })
-    .catch((e) => {
-      spinner.text = `Failed: ${e.message}\n`;
-      spinner.fail();
-    });
+  executeInitFlowWithSpinnerDisplays();  
 }
